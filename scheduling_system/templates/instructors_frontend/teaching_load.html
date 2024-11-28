@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CTU Scheduler</title>
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'css/teaching-load.css' %}">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+</head>
+<body>
+    <header>
+        <h1>CTU Scheduler</h1>
+        <nav>
+            <a href="#home">Home</a>
+            <a href="#create-teaching-load">Create Teaching Load</a>
+            <a href="#instructor-courses">Instructor Courses</a>
+            <a href="#programs">Programs</a>
+            <a href="#search-instructors">Search Instructors</a>
+        </nav>
+    </header>
+
+    <!-- Instructor Search Section -->
+    <section id="instructor-search">
+        <h2>Search Instructors</h2>
+        <div id="search-form" class="search-container">
+            <form method="GET" action="{% url 'teaching_load' %}" class="d-flex justify-content-center align-items-center w-500">
+
+                <!-- Filter dropdown -->
+                <select id="filter-dropdown" name="filter" placeholder="Filter" class="filter-dropdown">
+                    <option value="ALL" {% if filter == 'ALL' %} selected {% endif %}>All</option>
+                    <option value="REGULAR" {% if filter == 'REGULAR' %} selected {% endif %}>Regular</option>
+                    <option value="COS" {% if filter == 'COS' %} selected {% endif %}>COS</option>
+                </select>
+                
+                <!-- Search input box -->
+                <input type="text" id="search-input" name="q" placeholder="Search Instructor" class="form-control" autocomplete="off" value="{{ query }}">
+                
+                <!-- Search button -->
+                <button type="submit" class="btn btn-primary ml-2">Search</button>
+            </form>
+        </div>
+        <!-- Suggestions Box -->
+        <div id="suggestions" class="suggestions-box"></div>
+        <!-- Instructor Details Box -->
+        <div id="instructor-details" class="instructor-details-container">
+            <div id="details-container"></div>
+        </div>
+    </section>
+
+    <footer>
+        <p>&copy; 2024 CTU Scheduler. All Rights Reserved.</p>
+    </footer>
+
+    <!-- AJAX Script -->
+    <script>
+$(document).ready(function() {
+    var previousQuery = '';  // Store the previous search query to avoid reloading on every keystroke
+    var searchData = [];  // Store the initial full list of instructors
+
+    // Show suggestions as user types
+    $("#search-input").keyup(function() {
+        var query = $(this).val().trim();  // Get the search query and remove extra spaces
+        var filter = $('#filter-dropdown').val();  // Get the selected filter (if any)
+
+        console.log("Search Query: " + query);  // Debugging line to check what query is entered
+
+        // Trigger search if query length is greater than 1 and if query has changed
+        if (query.length > 0 && query !== previousQuery) {
+            // If we have searchData already, filter based on query
+            if (searchData.length > 0) {
+                filterSuggestions(query);
+            } else {
+                // First time loading search data, fetch the full list of instructors
+                $.ajax({
+                    url: "{% url 'search_instructors' %}",  // Your search URL here
+                    data: {
+                        'q': query,  // Send the query to the server
+                        'filter': filter  // Send the filter value to the server
+                    },
+                    success: function(data) {
+                        console.log("Data returned from backend:", data);  // Debugging line to check the response from the server
+                        searchData = data.results;  // Save the full list of instructors for future filtering
+                        filterSuggestions(query);  // Call to filter the suggestions based on the query
+                    },
+                    error: function(xhr, status, error) {
+                        console.error("Error fetching suggestions:", error);  // Log error if AJAX fails
+                        $("#suggestions").removeClass('suggestions-visible');  // Hide suggestions on error
+                    }
+                });
+            }
+
+            // Update the previous query
+            previousQuery = query;
+        } else if (query.length <= 0) {
+            // If the query is cleared, hide suggestions
+            $("#suggestions").removeClass('suggestions-visible');
+        }
+    });
+
+    // Function to filter suggestions based on the current search query
+    function filterSuggestions(query) {
+        var filteredResults = searchData.filter(function(item) {
+            return item.name.toLowerCase().includes(query.toLowerCase());  // Case-insensitive matching
+        });
+
+        // Clear previous suggestions
+        $("#suggestions").html('');
+
+        // If filtered results are found, show them
+        if (filteredResults.length > 0) {
+            $("#suggestions").addClass('suggestions-visible');  // Show the suggestion box
+            filteredResults.forEach(function(item) {
+                // Append each suggestion to the suggestions box
+                $("#suggestions").append('<div class="suggestion-item" data-id="' + item.instructor_id + '">' + item.name + '</div>');
+            });
+        } else {
+            $("#suggestions").removeClass('suggestions-visible');  // Hide the suggestions box if no results
+            $("#suggestions").append('<div class="suggestion-item">No suggestions found.</div>');
+        }
+    }
+
+    // When a suggestion is clicked
+    $(document).on('click', '.suggestion-item', function() {
+        var instructorId = $(this).data('id');  // Get the instructor ID from the clicked suggestion
+        console.log("Instructor ID clicked: " + instructorId);  // Debugging line to check the clicked ID
+        
+        // Handle the selection and fetch details for the clicked instructor
+        $.ajax({
+            url: "{% url 'instructor_details' %}",  // The URL for displaying instructor details
+            data: {
+                'id': instructorId  // Send the instructor ID to fetch details
+            },
+            success: function(data) {
+                console.log("Instructor details:", data);  // Log instructor details for debugging
+                
+                // Insert instructor details into the #details-container
+                $("#details-container").html(`
+                    <p><strong>Name:</strong> ${data.name}</p>
+                    <p><strong>Employment Type:</strong> ${data.employment_type}</p>
+                    <p><strong>Qualified Courses:</strong> ${data.qualified_courses}</p>
+                `);
+
+                // Clear suggestions
+                $("#suggestions").empty();
+
+                // Set the instructor name in the search box
+                $("#search-input").val(data.name);
+
+                // Hide suggestions and show instructor details
+                $("#suggestions").removeClass('suggestions-visible');
+                $("#instructor-details").show();
+            },
+            error: function(xhr, status, error) {
+                console.error("Error fetching instructor details:", error);
+            }
+        });
+    });
+
+    // When the filter dropdown is changed, reset the search input and hide suggestions
+    $("#filter-dropdown").change(function() {
+        var filter = $(this).val();  // Get the selected filter value
+
+        console.log("Filter changed. New filter: " + filter);
+
+        // Clear search input and hide suggestions
+        $("#search-input").val('');
+        $("#suggestions").removeClass('suggestions-visible');
+
+        // Trigger search again with the updated filter (empty search)
+        $.ajax({
+            url: "{% url 'search_instructors' %}",
+            data: {
+                'q': '',  // Clear the search query
+                'filter': filter  // Send the new filter value to the server
+            },
+            success: function(data) {
+                console.log("Data returned from backend after filter change:", data);
+
+                // Save the full list of instructors for future filtering
+                searchData = data.results;
+
+                // Clear suggestions
+                $("#suggestions").html('');
+                $("#suggestions").removeClass('suggestions-visible');
+            },
+            error: function(xhr, status, error) {
+                console.error("Error fetching suggestions after filter change:", error);
+                $("#suggestions").removeClass('suggestions-visible');
+            }
+        });
+    });
+});
+
+
+    </script>
+
+</body>
+</html>

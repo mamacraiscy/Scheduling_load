@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Room Utilization</title>
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'css/room-util.css' %}">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <header>
+        <h1>Room Utilization</h1>
+        <nav>
+            <a href="#home">Home</a>
+            <a href="#schedule-room">Schedule Room</a>
+            <a href="#rooms">Rooms</a>
+            <a href="#programs">Programs</a>
+            <a href="#about">About</a>
+        </nav>
+    </header>
+
+    <!-- Room Search Section -->
+    <section id="room-search">
+        <h2>Search Rooms</h2>
+        <div id="search-form" class="search-container">
+            <input type="text" id="search-input" placeholder="Search Room" class="form-control" autocomplete="off">
+            <button type="button" id="search-button" class="btn btn-primary ml-2">Search</button>
+        </div>
+
+        <!-- Suggestions Box -->
+        <div id="suggestions" class="suggestions-box"></div>
+
+        <!-- Room Details Box -->
+        <div id="room-details" class="room-details-container">
+            <div id="details-container"></div>
+        </div>
+    </section>
+
+    <!-- Room Scheduling Section -->
+<section id="room-scheduling">
+    <h2>Schedule Room</h2>
+    <form id="schedule-form" method="POST">
+        {% csrf_token %}
+        
+        <!-- Display selected room's name -->
+        <label for="selected-room-name">Room:</label>
+        <input type="text" id="selected-room-name" name="room_name" disabled> <!-- Display the selected room's name -->
+        <input type="hidden" id="selected-room-id" name="room"> <!-- Hidden field to store room id -->
+
+        <!-- Day selection -->
+        <label for="day-select">Day:</label>
+        <select id="day-select" name="day">
+            <option value="Monday">Monday</option>
+            <option value="Tuesday">Tuesday</option>
+            <option value="Wednesday">Wednesday</option>
+            <option value="Thursday">Thursday</option>
+            <option value="Friday">Friday</option>
+            <option value="Saturday">Saturday</option>
+            <option value="Sunday">Sunday</option>
+        </select>
+
+        <!-- Start time selection -->
+        <label for="start-time">Start Time:</label>
+        <input type="time" id="start-time" name="start-time">
+
+        <!-- End time selection -->
+        <label for="end-time">End Time:</label>
+        <input type="time" id="end-time" name="end-time">
+
+        <!-- Display duration -->
+        <div id="duration-display"></div>
+
+        <!-- Submit button -->
+        <button type="submit" id="add-schedule" class="btn btn-success">Add Schedule</button>
+    </form>
+
+        <!-- Schedule Display -->
+        <div id="schedule-display">
+            <h3>Scheduled Rooms</h3>
+            <ul id="schedule-list"></ul>
+        </div>
+    </section>
+
+    <footer>
+        <p>&copy; 2024 Room Utilization System. All Rights Reserved.</p>
+    </footer>
+
+    <script>
+        $(document).ready(function () {
+            // Handle the room search input
+            $("#search-input").keyup(function () {
+                const query = $(this).val().toLowerCase();
+
+                if (query) {
+                    $.ajax({
+                        url: "{% url 'search_rooms' %}",
+                        data: {
+                            'q': query,
+                        },
+                        success: function(data) {
+                            const suggestions = data.rooms.map(function(room) {
+                                return `<div class="suggestion-item" data-id="${room.room_id}">${room.room_number} - ${room.room_type}</div>`;
+                            }).join('');
+
+                            const suggestionsBox = $("#suggestions");
+                            if (suggestions.length) {
+                                suggestionsBox.html(suggestions);
+                            } else {
+                                suggestionsBox.html("<div class='suggestion-item'>No results found</div>");
+                            }
+                        }
+                    });
+                } else {
+                    $("#suggestions").empty();
+                }
+            });
+
+            // Show selected room details
+            $(document).on("click", ".suggestion-item", function () {
+                const roomId = $(this).data("id");
+                $.ajax({
+                    url: "{% url 'room_details' %}",
+                    data: {
+                        'room_id': roomId,
+                    },
+                    success: function(data) {
+                        const details = `
+                            <p><strong>Room Number:</strong> ${data.room.room_number}</p>
+                            <p><strong>Room Type:</strong> ${data.room.room_type}</p>
+                            <p><strong>Building Name:</strong> ${data.room.building_name}</p>
+                            <p><strong>Campus Name:</strong> ${data.room.campus_name}</p>
+                        `;
+                        $("#details-container").html(details);
+                        $("#room-details").show();
+
+                        // Pre-fill the room name and ID in the schedule form
+                        $("#selected-room-name").val(data.room.room_number + " - " + data.room.room_type);
+                        $("#selected-room-id").val(roomId);
+                    }
+                });
+                $("#search-input").val($(this).text());
+                $("#suggestions").empty();
+            });
+
+            // Calculate and display duration
+            $("#start-time, #end-time").change(function () {
+                const startTime = $("#start-time").val();
+                const endTime = $("#end-time").val();
+
+                if (startTime && endTime) {
+                    const start = new Date(`1970-01-01T${startTime}Z`);
+                    const end = new Date(`1970-01-01T${endTime}Z`);
+                    const durationMinutes = (end - start) / 60000;  // Calculate the duration in minutes
+
+                    if (durationMinutes > 0) {
+                        const hours = Math.floor(durationMinutes / 60);
+                        const minutes = durationMinutes % 60;
+                        const duration = `${hours} hour(s) ${minutes} minute(s)`;
+
+                        $("#duration-display").text(`Duration: ${duration}`);
+                    } else {
+                        $("#duration-display").text("End time must be later than start time.");
+                    }
+                }
+            });
+
+            // Add to the schedule
+            $("#schedule-form").submit(function (e) {
+                e.preventDefault();
+
+                const selectedRoom = $("#selected-room-name").val();
+                const day = $("#day-select").val();
+                const startTime = $("#start-time").val();
+                const endTime = $("#end-time").val();
+
+                if (!selectedRoom || !day || !startTime || !endTime) {
+                    alert("Please fill out all fields!");
+                    return;
+                }
+
+                const scheduleItem = `<li>${selectedRoom} - ${day} from ${startTime} to ${endTime}</li>`;
+                $("#schedule-list").append(scheduleItem);
+
+                // Optionally, submit this schedule via AJAX to the backend for saving
+            });
+
+                // When a room is selected, populate the room name and id
+                $(document).on('click', '.suggestion-item', function () {
+                    const roomId = $(this).data('id');
+                    const roomName = $(this).text();
+        
+                    $('#selected-room-name').val(roomName); // Display the room name
+                    $('#selected-room-id').val(roomId);     // Set the room id in hidden field
+                });
+        
+                // Calculate and display the duration when start or end time changes
+                $("#start-time, #end-time").change(function () {
+                    const startTime = $("#start-time").val();
+                    const endTime = $("#end-time").val();
+        
+                    if (startTime && endTime) {
+                        const start = new Date(`1970-01-01T${startTime}Z`);
+                        const end = new Date(`1970-01-01T${endTime}Z`);
+                        const durationMinutes = (end - start) / 60000;  // Calculate the duration in minutes
+        
+                        if (durationMinutes > 0) {
+                            const hours = Math.floor(durationMinutes / 60);
+                            const minutes = durationMinutes % 60;
+                            const duration = `${hours} hour(s) ${minutes} minute(s)`;
+        
+                            $("#duration-display").text(`Duration: ${duration}`);
+                        } else {
+                            $("#duration-display").text("End time must be later than start time.");
+                        }
+                    }
+                });        
+        });
+    </script>
+</body>
+</html>

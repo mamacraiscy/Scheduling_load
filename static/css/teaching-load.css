@@ -1,0 +1,162 @@
+/* General Styles */
+body {
+  font-family: Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  background-color: #f4f4f4;
+}
+
+header {
+  background-color: #333;
+  color: white;
+  padding: 10px 0;
+  text-align: center;
+}
+
+header h1 {
+  margin: 0;
+  font-size: 2em;
+}
+
+nav a {
+  color: white;
+  margin: 0 15px;
+  text-decoration: none;
+}
+
+.d-flex {
+  width: 95%;
+}
+
+nav a:hover {
+  text-decoration: underline;
+}
+
+/* Search Section Styles */
+#instructor-search {
+  margin: 30px auto;
+  max-width: 600px;
+  background-color: white;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  justify-content: flex;
+}
+
+.search-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  align-items: flex-start;
+  padding-left: 5px;
+}
+
+#search-input {
+  padding: 10px;
+  font-size: 16px;
+  width: 50%;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  outline: none;
+}
+
+#filter-dropdown {
+  padding: 10px;
+  font-size: 16px;
+  width: 20%;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  outline: auto;
+ 
+}
+
+button[type="submit"] {
+  padding: 10px 15px;
+  font-size: 16px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+/* Suggestions Box Styles */
+#suggestions {
+  margin-top: 10px;
+  max-height: 200px;
+  overflow-y: auto;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  display: block;
+  width: 90%;
+  background-color: white;
+  z-index: 999;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.suggestions-box .suggestion-item {
+  padding: 10px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.suggestion-item:hover {
+  background-color: #f0f0f0;
+}
+
+/* Show suggestions when data is available */
+.suggestions-visible {
+  display: block;
+}
+
+/* Instructor Details Section */
+#instructor-details {
+  display: none;
+  margin-top: 30px;
+  max-width: 600px;
+  background-color: white;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+#details-container {
+  padding-top: 10px;
+  border-radius: 10px;
+  border: 1px solid #ddd;
+  background-color: rgb(255, 255, 255);
+}
+
+#details-container div {
+  margin-bottom: 10px;
+}
+
+footer {
+  text-align: center;
+  margin-top: 50px;
+  background-color: #333;
+  color: white;
+  padding: 20px;
+  position: inherit;
+}
+
+footer p {
+  margin: 0;
+  font-size: 1em;
+}
+
+/* Responsiveness */
+@media (max-width: 600px) {
+  .search-container {
+      flex-direction: column;
+      width: 100%;
+  }
+
+  #instructor-search {
+      margin: 10px;
+  }
+
+  #instructor-details {
+      margin-top: 20px;
+  }
+}
